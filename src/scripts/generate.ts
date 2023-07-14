@@ -1,24 +1,26 @@
 import path from 'node:path'
-import { copySync } from 'fs-extra'
-import { readdir, rename, writeFile } from 'fs/promises'
+import fs from 'fs-extra'
+import { readdir, mkdir } from 'fs/promises'
 import prompts, { Choice, PromptObject } from 'prompts';
 import Chalk from 'chalk'
 import uploadToQiniu from '../lib/upload';
 const { v4: uuid } = require('uuid');
-// const assetsPath = '/Users/ares/Downloads/上衣/Casual/Casual Jackets';
+
 const bucketName = 'sunzi-assets';
 const folderPath = 'preload/lego-mini-v2';
-const outPutPath = './demo';
 const prefix = 'https://assets.sunzi.cool/preload/lego-mini-v2'
+const reg = new RegExp(/([\s\S]+?)-(\d{1,3}-\d{1,3}|\d{1,3})-#(.*).(png|jpg|jpeg|svg)$/);
+const errorPath: string[] = [];
 
-// enum PositionMap {
-//   '0' = 'body-front',
-//   '1' = 'body-back',
-//   '2' = 'body-left',
-//   '3' = 'body-right',
-//   '4' = 'long-sleeves-left',
-//   '5' = 'long-sleeves-right'
-// }
+const positionMap = new Map([
+  ['0', 'front'],
+  ['1', 'back'],
+  ['2', 'side'],
+  ['3', 'side'],
+  ['4', 'sheelve'],
+  ['5', 'sheelve']
+])
+
 const clothes: Choice[] = [{
   title: "clothes -> Occasion",
   value: "Occasion",
@@ -55,11 +57,6 @@ const pants: Choice[] = [{
 
 const questions: PromptObject[] = [
   {
-    type: "text",
-    name: "assetsPath",
-    message: "choose your asset absolute path"
-  },
-  {
     type: 'select',
     name: 'part',
     message: '请选择part 🐱',
@@ -77,7 +74,7 @@ const questions: PromptObject[] = [
   {
     type: 'select',
     name: 'classify',
-    message: '请选择classify 🐶',
+    message: '请选择classify 🐱',
     choices: (pre) => {
       if (pre === 'clothes') {
         return clothes
@@ -87,33 +84,46 @@ const questions: PromptObject[] = [
   }
 ];
 
+const match = (name: string) => {
+  return name.match(reg);
+}
+
+const onCancel = () => {
+  console.log(Chalk.red('you exit 🙀'))
+  process.exit(0)
+}
+
+const validate = (val) => {
+  const reg = /^\/(\w)/
+  return true
+}
+
 const run = async () => {
+  const uuidHashMap = new Map<string, string>()
+  let assetsPath = "";
+  do {
+    const { path } = await prompts({
+      type: "text",
+      name: "path",
+      message: "choose your asset absolute path",
+      validate
+    }, {
+      onCancel
+    })
+    assetsPath = (path as string).trim();
+  } while (!assetsPath);
+
   const response = await prompts(questions, {
-    onCancel: () => {
-      console.log(Chalk.red('you exit 🙀'))
-      process.exit(0)
-    }
+    onCancel
   });
 
-  const { classify, part, assetsPath } = response;
+  const { classify, part } = response;
   const realPath = `${folderPath}/${part}/${classify}`
 
-  console.log(response);
+  const generateJSonPresets = async (files: string[]) => {
 
-  const getUploadedUrl = (name) => {
-    return `${prefix}/${part}/${classify}/${encodeURIComponent(name)}`
-  }
-
-  const generateJSonPresets = async () => {
-    if (!assetsPath) {
-      console.log(Chalk.red('must be have assets path'))
-      process.exit()
-    }
-
-    const files = await readdir(assetsPath);
     const images = files.filter((file) => /\.(png|jpg|jpeg|svg)$/i.test(file));
     const assetsMap = {}
-    const errorPath: string[] = [];
 
     /**
      * @description 整理 不同衣服、裤子的所拥有 颜色的路径映射关系
@@ -138,10 +148,9 @@ const run = async () => {
         }
       }
     */
-    // step 1
     while (images.length > 0) {
       const fileName = images.shift() ?? "";
-      const reg = new RegExp(/([\s\S]+?)-(\d{1,3}-\d{1,3}|\d{1,3})-#(.*).png/);
+
       const patten = fileName.match(reg);
 
       if (!patten) {
@@ -166,11 +175,9 @@ const run = async () => {
       }
     }
 
-    // step 2
-    const json = Object.entries(assetsMap).map(([name, value], index) => {
+    const data = Object.entries(assetsMap).map(([name, value], index) => {
       const colorOptions = value as object;
       const colors = Object.entries(colorOptions).map(([color, colorPositionMap]) => {
-        // console.log(color, colorPositionMap);
         // const decals = Object.entries(colorPositionMap).reduce((pre, cur) => {
         //   const [num, path] = cur;
         //   const [, p2] = num.split('-')
@@ -191,23 +198,86 @@ const run = async () => {
           // decals
         }
       })
-
+      const id = uuid();
+      uuidHashMap.set(name, id);
       return {
-        id: uuid(),
+        id,
         name: name,
         thumb: "",
         colors
       }
     })
-    return [JSON.stringify(json)]
+
+    return data
   };
 
-  const json = await generateJSonPresets();
+  const renameFileWithField = async (files: string[]) => {
+    const sourceDir = assetsPath;
+    const outputDir = path.resolve(__dirname, '../../output')
 
-  writeFile(
-    path.resolve(__dirname, '../demo', 'test.json'),
-    JSON.stringify(json)
-  );
+    for (const file of files) {
+      const patten = file.match(reg);
+
+      if (!patten) {
+        continue;
+      }
+
+      const name = patten[1];
+      const color = patten[3];
+      const positionNum = patten[2];
+      const affix = patten[4]
+      // 查询hashMap 中 生成的模版数据素材名对应的uuid
+      const materialId = uuidHashMap.get(name);
+
+      const [, p2] = positionNum.split('-')
+      const key = p2 ? p2 : '0'
+      const newFileName = `${materialId}-${color}-${positionMap.get(key)}.${affix}`
+      const sourcePath = path.join(sourceDir, file)
+      const targetPath = path.join(outputDir, newFileName)
+
+      fs.copy(sourcePath, targetPath);
+
+    }
+
+  }
+
+  const getUploadedUrl = (name) => {
+    return `${prefix}/${part}/${classify}/${encodeURIComponent(name)}`
+  }
+
+  // exec
+  if (!assetsPath) {
+    console.log(Chalk.red('must be have assets path'))
+    process.exit(0)
+  }
+
+  try {
+    const outputDir = path.resolve(__dirname, '../../output')
+
+    await mkdir(outputDir)
+    await mkdir(path.join(outputDir, '/json'))
+
+    const files = await readdir(assetsPath);
+
+    // step 1 生成模版数据
+    const data = await generateJSonPresets(files);
+
+    // 复制粘贴重命名目标文件
+    await renameFileWithField(files);
+
+    console.log(uuidHashMap);
+    console.log('error path =>', errorPath, `${errorPath.length > 0 ? '🙀' : '🐱'}`)
+    fs.writeFileSync(
+      path.join(__dirname, '../../output/json', 'test.json'),
+      JSON.stringify(data),
+      {
+
+      }
+    );
+
+  } catch (error) {
+    console.log(Chalk.red(error))
+  }
 };
 
 
