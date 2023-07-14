@@ -1,0 +1,12 @@
+.idea
+dist
+lib
+node_modules
+es
+types
+umd
+*.lock
+*error.log
+.DS_Store
+*-debug.log
+*.pem
