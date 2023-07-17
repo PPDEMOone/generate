@@ -9,7 +9,7 @@ const { v4: uuid } = require('uuid');
 const bucketName = 'sunzi-assets';
 const folderPath = 'preload/lego-mini-v2';
 const prefix = 'https://assets.sunzi.cool/preload/lego-mini-v2'
-const reg = new RegExp(/([\s\S]+?)-(\d{1,3}-\d{1,3}|\d{1,3})-#(.*).(png|jpg|jpeg|svg)$/);
+const reg = new RegExp(/([\s\S]+?)-(\d{1,3}-\d{1,3}|\d{1,3}|texture)-#(.*).(png|jpg|jpeg|svg)$/);
 const errorPath: string[] = [];
 
 const positionMap = new Map([
@@ -84,29 +84,24 @@ const questions: PromptObject[] = [
   }
 ];
 
-const match = (name: string) => {
-  return name.match(reg);
-}
-
 const onCancel = () => {
   console.log(Chalk.red('you exit 🙀'))
   process.exit(0)
 }
 
-const validate = (val) => {
-  const reg = /^\/(\w)/
-  return true
-}
+// const validate = (val) => {
+//   const reg = /^\/(\w)/
+//   return true
+// }
 
 const run = async () => {
-  const uuidHashMap = new Map<string, string>()
+  let uuidHashMap = {}
   let assetsPath = "";
   do {
     const { path } = await prompts({
       type: "text",
       name: "path",
-      message: "choose your asset absolute path",
-      validate
+      message: "enter your asset absolute path",
     }, {
       onCancel
     })
@@ -198,8 +193,13 @@ const run = async () => {
           // decals
         }
       })
-      const id = uuid();
-      uuidHashMap.set(name, id);
+      const id = uuidHashMap[name] ? uuidHashMap[name] : uuid();
+
+      // 记录下 素材id
+      if (!uuidHashMap[name]) {
+        uuidHashMap[name] = id;
+      }
+
       return {
         id,
         name: name,
@@ -227,7 +227,7 @@ const run = async () => {
       const positionNum = patten[2];
       const affix = patten[4]
       // 查询hashMap 中 生成的模版数据素材名对应的uuid
-      const materialId = uuidHashMap.get(name);
+      const materialId = uuidHashMap[name];
 
       const [, p2] = positionNum.split('-')
       const key = p2 ? p2 : '0'
@@ -253,9 +253,15 @@ const run = async () => {
 
   try {
     const outputDir = path.resolve(__dirname, '../../output')
-
+    const material = path.resolve(__dirname, '../material/index.json')
     await mkdir(outputDir)
     await mkdir(path.join(outputDir, '/json'))
+    await mkdir(path.join(outputDir, '/thumb'))
+
+    // 获取已生成的素材id记录
+    if (fs.existsSync(material)) {
+      uuidHashMap = fs.readJsonSync(material);
+    }
 
     const files = await readdir(assetsPath);
 
@@ -265,14 +271,15 @@ const run = async () => {
     // 复制粘贴重命名目标文件
     await renameFileWithField(files);
 
-    console.log(uuidHashMap);
+    if (uuidHashMap) {
+      fs.writeFile(material, JSON.stringify(uuidHashMap));
+    }
+
     console.log('error path =>', errorPath, `${errorPath.length > 0 ? '🙀' : '🐱'}`)
     fs.writeFileSync(
       path.join(__dirname, '../../output/json', 'test.json'),
       JSON.stringify(data),
-      {
-
-      }
+      {}
     );
 
   } catch (error) {
