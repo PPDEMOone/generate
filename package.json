@@ -4,8 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "generate": "rm -rf ./output && esno ./src/scripts/generate.ts",
-    "test": "esno ./src/scripts/test.ts"
+    "generate": "rm -rf ./output && esno ./src/scripts/generate.ts"
   },
   "keywords": [],
   "author": "",
