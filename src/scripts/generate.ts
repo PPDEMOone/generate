@@ -15,10 +15,10 @@ const errorPath: string[] = [];
 const positionMap = new Map([
   ['0', 'front'],
   ['1', 'back'],
-  ['2', 'side'],
-  ['3', 'side'],
-  ['4', 'sheelve'],
-  ['5', 'sheelve']
+  ['2', 'side-left'],
+  ['3', 'side-right'],
+  ['4', 'sheelve-left'],
+  ['5', 'sheelve-right']
 ])
 
 const clothes: Choice[] = [{
