@@ -11,6 +11,7 @@ const folderPath = 'preload/lego-mini-v2';
 const prefix = 'https://assets.sunzi.cool/preload/lego-mini-v2'
 const reg = new RegExp(/([\s\S]+?)-(\d{1,3}-\d{1,3}|\d{1,3}|texture)-#(.*).(png|jpg|jpeg|svg)$/);
 const errorPath: string[] = [];
+const thumbPath: string[] = [];
 
 const positionMap = new Map([
   ['0', 'front'],
@@ -156,6 +157,12 @@ const run = async () => {
       const color = patten[3];
       const positionNum = patten[2];
 
+      // 为预览图
+      if (positionNum === 'texture') {
+        // thumbPath.push(fileName)
+        continue
+      }
+
       if (!assetsMap[name]) {
         assetsMap[name] = {
           [color]: {
@@ -217,6 +224,7 @@ const run = async () => {
 
     for (const file of files) {
       const patten = file.match(reg);
+      const sourcePath = path.join(sourceDir, file)
 
       if (!patten) {
         continue;
@@ -225,14 +233,24 @@ const run = async () => {
       const name = patten[1];
       const color = patten[3];
       const positionNum = patten[2];
+
+
+
       const affix = patten[4]
       // 查询hashMap 中 生成的模版数据素材名对应的uuid
       const materialId = uuidHashMap[name];
 
+      // 为预览图时
+      if (positionNum === 'texture') {
+        const newFileName = `${materialId}-${color}-thumb.${affix}`
+        const targetPath = path.join(`${outputDir}/thumbs`, newFileName)
+        fs.copy(sourcePath, targetPath);
+        continue
+      }
+
       const [, p2] = positionNum.split('-')
       const key = p2 ? p2 : '0'
       const newFileName = `${materialId}-${color}-${positionMap.get(key)}.${affix}`
-      const sourcePath = path.join(sourceDir, file)
       const targetPath = path.join(outputDir, newFileName)
 
       fs.copy(sourcePath, targetPath);
