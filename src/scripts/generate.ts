@@ -9,7 +9,7 @@ const { v4: uuid } = require('uuid');
 const bucketName = 'sunzi-assets';
 const folderPath = 'preload/lego-mini-v2';
 const prefix = 'https://assets.sunzi.cool/preload/lego-mini-v2'
-const reg = new RegExp(/([\s\S]+?)-(\d{1,3}-\d{1,3}|\d{1,3}|texture)-#(.*).(png|jpg|jpeg|svg)$/);
+const reg = new RegExp(/([\s\S]+?)-(\d{1,3}-\d{1,3}|\d{1,3})-#(.*).(png|jpg|jpeg|svg)$/);
 const errorPath: string[] = [];
 const thumbPath: string[] = [];
 
@@ -18,8 +18,15 @@ const positionMap = new Map([
   ['1', 'back'],
   ['2', 'side-left'],
   ['3', 'side-right'],
-  ['4', 'sheelve-left'],
-  ['5', 'sheelve-right']
+  ['4', 'sleeve-left'],
+  ['5', 'sleeve-right']
+])
+
+const pantPositionMap = new Map([
+  ['0', 'front'],
+  ['1', 'back'],
+  ['2', 'side-left'],
+  ['2', 'side-right'],
 ])
 
 const clothes: Choice[] = [{
@@ -201,8 +208,10 @@ const run = async () => {
         }
       })
       const id = uuidHashMap[name] ? uuidHashMap[name] : uuid();
+      let thumbUrl: string;
 
-      // 记录下 素材id
+
+      // 记录下 素材id, 设置第一个颜色为预览图路径，该路径后续由 generate.thumb 生成
       if (!uuidHashMap[name]) {
         uuidHashMap[name] = id;
       }
@@ -210,8 +219,8 @@ const run = async () => {
       return {
         id,
         name: name,
-        thumb: "",
-        colors
+        colors,
+        thumb: `${prefix}/${folderPath}/${part}/material/${id}-texture-${colors[0].color}.png`
       }
     })
 
@@ -220,7 +229,7 @@ const run = async () => {
 
   const renameFileWithField = async (files: string[]) => {
     const sourceDir = assetsPath;
-    const outputDir = path.resolve(__dirname, '../../output')
+    const outputDir = path.resolve(__dirname, '../../output/material')
 
     for (const file of files) {
       const patten = file.match(reg);
@@ -234,19 +243,9 @@ const run = async () => {
       const color = patten[3];
       const positionNum = patten[2];
 
-
-
       const affix = patten[4]
       // 查询hashMap 中 生成的模版数据素材名对应的uuid
       const materialId = uuidHashMap[name];
-
-      // 为预览图时
-      if (positionNum === 'texture') {
-        const newFileName = `${materialId}-${color}-thumb.${affix}`
-        const targetPath = path.join(`${outputDir}/thumbs`, newFileName)
-        fs.copy(sourcePath, targetPath);
-        continue
-      }
 
       const [, p2] = positionNum.split('-')
       const key = p2 ? p2 : '0'
@@ -272,19 +271,23 @@ const run = async () => {
   try {
     const outputDir = path.resolve(__dirname, '../../output')
     const material = path.resolve(__dirname, '../material/index.json')
-    await mkdir(outputDir)
-    await mkdir(path.join(outputDir, '/json'))
-    await mkdir(path.join(outputDir, '/thumb'))
 
     // 获取已生成的素材id记录
     if (fs.existsSync(material)) {
       uuidHashMap = fs.readJsonSync(material);
     }
 
+    if (!fs.existsSync(outputDir)) {
+      await mkdir(outputDir)
+    }
+
+    await mkdir(path.join(outputDir, '/json'))
+
     const files = await readdir(assetsPath);
 
     // step 1 生成模版数据
     const data = await generateJSonPresets(files);
+
 
     // 复制粘贴重命名目标文件
     await renameFileWithField(files);
