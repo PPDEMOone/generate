@@ -208,7 +208,6 @@ const run = async () => {
         }
       })
       const id = uuidHashMap[name] ? uuidHashMap[name] : uuid();
-      let thumbUrl: string;
 
 
       // 记录下 素材id, 设置第一个颜色为预览图路径，该路径后续由 generate.thumb 生成
@@ -220,7 +219,7 @@ const run = async () => {
         id,
         name: name,
         colors,
-        thumb: `${prefix}/${folderPath}/${part}/material/${id}-texture-${colors[0].color}.png`
+        thumb: `${prefix}/${part}/material-thumbs/${id}-texture-${colors[0].color}.png`
       }
     })
 
