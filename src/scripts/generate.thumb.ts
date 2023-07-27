@@ -9,7 +9,7 @@ const { v4: uuid } = require('uuid');
 const bucketName = 'sunzi-assets';
 const folderPath = 'preload/lego-mini-v2';
 const prefix = 'https://assets.sunzi.cool/preload/lego-mini-v2'
-const reg = new RegExp(/([\s\S]+?)-(texture)-#(.*).(png|jpg|jpeg|svg)$/);
+const reg = new RegExp(/([\s\S]+?)-(texture)-(#.*|.*).(png|jpg|jpeg|svg)$/);
 const errorPath: string[] = [];
 const thumbPath: string[] = [];
 

@@ -9,7 +9,7 @@ const { v4: uuid } = require('uuid');
 const bucketName = 'sunzi-assets';
 const folderPath = 'preload/lego-mini-v2';
 const prefix = 'https://assets.sunzi.cool/preload/lego-mini-v2'
-const reg = new RegExp(/([\s\S]+?)-(\d{1,3}-\d{1,3}|\d{1,3})-#(.*).(png|jpg|jpeg|svg)$/);
+const reg = new RegExp(/([\s\S]+?)-(\d{1,3}-\d{1,3}|\d{1,3})-(#.*|.*).(png|jpg|jpeg|svg)$/);
 const errorPath: string[] = [];
 const thumbPath: string[] = [];
 
@@ -248,7 +248,7 @@ const run = async () => {
 
       const [, p2] = positionNum.split('-')
       const key = p2 ? p2 : '0'
-      const newFileName = `${materialId}-${color}-${positionMap.get(key)}.${affix}`
+      const newFileName = `${materialId}-${color.replace(/#/, "")}-${positionMap.get(key)}.${affix}`
       const targetPath = path.join(outputDir, newFileName)
 
       fs.copy(sourcePath, targetPath);
