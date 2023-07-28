@@ -202,8 +202,8 @@ const run = async () => {
 
         return {
           id: uuid(),
-          color: color,
-          value: color,
+          color: color.replace(/#/, ""),
+          value: color.replace(/#/, ""),
           // decals
         }
       })
@@ -219,7 +219,7 @@ const run = async () => {
         id,
         name: name,
         colors,
-        thumb: `${prefix}/${part}/material-thumbs/${id}-texture-${colors[0].color}.png`
+        thumb: `${prefix}/${(part as string).trim()}/material-thumbs/${id}-texture-${colors[0].color.replace(/#/, "")}.png`
       }
     })
 
@@ -248,6 +248,7 @@ const run = async () => {
 
       const [, p2] = positionNum.split('-')
       const key = p2 ? p2 : '0'
+
       const newFileName = `${materialId}-${color.replace(/#/, "")}-${positionMap.get(key)}.${affix}`
       const targetPath = path.join(outputDir, newFileName)
 

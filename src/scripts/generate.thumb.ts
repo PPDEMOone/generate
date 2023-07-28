@@ -132,7 +132,7 @@ const run = async () => {
       }
       // 为预览图时
       if (positionNum === 'texture') {
-        const newFileName = `${materialId}-texture-${color}.${affix}`
+        const newFileName = `${materialId}-texture-${color.replace(/#/, "")}.${affix}`
         const targetPath = path.join(`${outputDir}/thumbs`, newFileName)
         fs.copy(sourcePath, targetPath);
         continue
