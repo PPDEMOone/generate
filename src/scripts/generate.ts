@@ -26,7 +26,7 @@ const pantPositionMap = new Map([
   ['0', 'front'],
   ['1', 'back'],
   ['2', 'side-left'],
-  ['2', 'side-right'],
+  ['3', 'side-right'],
 ])
 
 const clothes: Choice[] = [{
@@ -254,7 +254,14 @@ const run = async () => {
 
       fs.copy(sourcePath, targetPath);
 
+      // 下装 侧边多复制一份右边
+      if (key === '2' && (part as string).trimEnd() === 'pants') {
+        const newFileName = `${materialId}-${color.replace(/#/, "")}-${pantPositionMap.get('3')}.${affix}`
+        const targetPath = path.join(outputDir, newFileName);
+        fs.copy(sourcePath, targetPath);
+      }
     }
+
 
   }
 
